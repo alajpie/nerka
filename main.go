@@ -76,6 +76,11 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		goto footer
 	}
 
+	if r.URL.Path == "/" {
+		w.Write([]byte("<title>nerka!</title>\n"))
+	} else {
+		w.Write([]byte("<title>nerka: " + strings.TrimPrefix(r.URL.Path, "/") + "</title>\n"))
+	}
 	md = markdown.ToHTML(file, nil, nil)
 	w.Write(md)
 
