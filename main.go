@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/go-http-utils/etag"
 	"github.com/gomarkdown/markdown"
+	"golang.org/x/net/html"
 )
 
 func handle(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +68,9 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var file, md []byte
+	var reader io.Reader
+	var doc *html.Node
+	var f func(*html.Node)
 
 	if strings.HasSuffix(r.URL.Path, "/") {
 		file, err = readExt(path.Join(r.URL.Path, "index"))
@@ -82,8 +88,41 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Write([]byte("<title>nerka: " + strings.TrimPrefix(r.URL.Path, "/") + "</title>\n"))
 	}
+
 	md = markdown.ToHTML(file, nil, nil)
-	w.Write(md)
+
+	reader = bytes.NewReader(md)
+	doc, err = html.Parse(reader)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+		goto footer
+	}
+
+	f = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" {
+			for _, attr := range n.Attr {
+				if attr.Key == "href" {
+					if strings.HasPrefix(attr.Val, "https://") ||
+						strings.HasPrefix(attr.Val, "//") ||
+						strings.HasPrefix(attr.Val, "http://") {
+						continue
+					}
+					_, err := readExt(path.Join(r.URL.Path, attr.Val))
+					notFile := err != nil
+					_, err = readExt(path.Join(r.URL.Path, attr.Val, "index"))
+					notFolder := err != nil
+					if notFile && notFolder {
+						n.Attr = append(n.Attr, html.Attribute{Key: "class", Val: "broken"})
+					}
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			f(c)
+		}
+	}
+	f(doc)
+	html.Render(w, doc)
 
 footer:
 	footer, err := readExt(".footer")
