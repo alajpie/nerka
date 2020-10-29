@@ -26,19 +26,20 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		return read(name)
 	}
 
+	if strings.HasPrefix(r.URL.Path, "/.auth/") {
+		auth := strings.TrimPrefix(r.URL.Path, "/.auth/")
+		http.SetCookie(w, &http.Cookie{Name: "nerka", Value: auth, Path: "/", Secure: true, HttpOnly: true, MaxAge: 31536000})
+		w.Header().Set("Location", "..")
+		w.WriteHeader(303)
+		return
+	}
+
 	header, err := readExt(".header")
 	if err == nil {
 		w.Write(header)
 	}
 
 	var auth, file, md []byte
-
-	if strings.HasPrefix(r.URL.Path, "/.auth/") {
-		auth := strings.TrimPrefix(r.URL.Path, "/.auth/")
-		http.SetCookie(w, &http.Cookie{Name: "nerka", Value: auth, Path: "/", Secure: true, HttpOnly: true, MaxAge: 31536000})
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		goto footer
-	}
 
 	auth, err = read(".auth")
 	if err == nil {
