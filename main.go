@@ -115,7 +115,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 					if strings.HasPrefix(attr.Val, "https://") ||
 						strings.HasPrefix(attr.Val, "//") ||
 						strings.HasPrefix(attr.Val, "http://") {
-						continue
+						break
 					}
 					_, err := readExt(path.Join(r.URL.Path, attr.Val))
 					notFile := err != nil
