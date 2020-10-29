@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/go-http-utils/etag"
 	"github.com/gomarkdown/markdown"
 )
 
@@ -92,5 +93,5 @@ footer:
 }
 
 func main() {
-	log.Fatal(http.ListenAndServe("127.0.0.1:8002", http.HandlerFunc(handle)))
+	log.Fatal(http.ListenAndServe("127.0.0.1:8002", etag.Handler(http.HandlerFunc(handle), false)))
 }
