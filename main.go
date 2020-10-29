@@ -34,23 +34,38 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	auth, err := read(".auth")
+	if err == nil {
+		cookie, err := r.Cookie("nerka")
+		if err != nil || cookie.Value != strings.TrimSpace(string(auth)) {
+			w.Write([]byte("no"))
+			return
+		}
+	}
+
+	info, err := os.Stat(path.Join(os.Args[1], r.URL.Path))
+	if err == nil {
+		if info.IsDir() && !strings.HasSuffix(r.URL.Path, "/") {
+			w.Header().Set("Location", path.Base(r.URL.Path)+"/")
+			w.WriteHeader(303)
+			return
+
+		}
+		if !info.IsDir() && strings.HasSuffix(r.URL.Path, "/") {
+			w.Header().Set("Location", path.Join("..", strings.TrimSuffix(path.Base(r.URL.Path), "/")))
+			w.WriteHeader(303)
+			return
+		}
+	}
+
 	header, err := readExt(".header")
 	if err == nil {
 		w.Write(header)
 	}
 
-	var auth, file, md []byte
+	var file, md []byte
 
-	auth, err = read(".auth")
-	if err == nil {
-		cookie, err := r.Cookie("nerka")
-		if err != nil || cookie.Value != strings.TrimSpace(string(auth)) {
-			w.Write([]byte("no"))
-			goto footer
-		}
-	}
-
-	if info, e := os.Stat(path.Join(os.Args[1], r.URL.Path)); e == nil && info.IsDir() {
+	if strings.HasSuffix(r.URL.Path, "/") {
 		file, err = readExt(path.Join(r.URL.Path, "index"))
 	} else {
 		file, err = readExt(r.URL.Path)
