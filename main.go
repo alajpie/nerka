@@ -50,8 +50,8 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if r.URL.Path == "/" {
-		file, err = readExt("index")
+	if info, e := os.Stat(path.Join(os.Args[1], r.URL.Path)); e == nil && info.IsDir() {
+		file, err = readExt(path.Join(r.URL.Path, "index"))
 	} else {
 		file, err = readExt(r.URL.Path)
 	}
