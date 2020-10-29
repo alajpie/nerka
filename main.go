@@ -100,6 +100,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 
 	f = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" {
+			broken := false
 			for _, attr := range n.Attr {
 				if attr.Key == "href" {
 					if strings.HasPrefix(attr.Val, "https://") ||
@@ -112,10 +113,25 @@ func handle(w http.ResponseWriter, r *http.Request) {
 					_, err = readExt(path.Join(r.URL.Path, attr.Val, "index"))
 					notFolder := err != nil
 					if notFile && notFolder {
-						n.Attr = append(n.Attr, html.Attribute{Key: "class", Val: "broken"})
+						broken = true
+						break
 					}
 				}
 			}
+			if broken {
+				existingClass := false
+				for i := range n.Attr {
+					if n.Attr[i].Key == "class" {
+						n.Attr[i].Val = n.Attr[i].Val + " broken"
+						existingClass = true
+						break
+					}
+				}
+				if !existingClass {
+					n.Attr = append(n.Attr, html.Attribute{Key: "class", Val: "broken"})
+				}
+			}
+
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			f(c)
