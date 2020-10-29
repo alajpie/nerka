@@ -75,9 +75,14 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// initialize document
+	var rawDoc []byte
+
 	// add header
 	header, err := readExt(".header")
-	rawDoc := append([]byte(nil), header...)
+	if err == nil {
+		rawDoc = append(rawDoc, header...)
+	}
 
 	// add title
 	var title []byte
