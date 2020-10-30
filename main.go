@@ -117,9 +117,9 @@ func handle(w http.ResponseWriter, r *http.Request) {
 						strings.HasPrefix(attr.Val, "http://") {
 						break
 					}
-					_, err := readExt(path.Join(r.URL.Path, attr.Val))
+					_, err := readExt(path.Join(path.Dir(r.URL.Path), attr.Val))
 					notFile := err != nil
-					_, err = readExt(path.Join(r.URL.Path, attr.Val, "index"))
+					_, err = readExt(path.Join(path.Dir(r.URL.Path), attr.Val, "index"))
 					notFolder := err != nil
 					if notFile && notFolder {
 						broken = true
