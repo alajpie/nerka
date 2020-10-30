@@ -11,8 +11,12 @@ import (
 
 	"github.com/go-http-utils/etag"
 	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/parser"
 	"golang.org/x/net/html"
 )
+
+extension := parser.CommonExtensions | parser.Attributes | parser.Mmark
+parser := parser.NewWithExtensions(extensions)
 
 func read(name string) ([]byte, error) {
 	return ioutil.ReadFile(path.Join(os.Args[1], name))
@@ -94,7 +98,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	rawDoc = append(rawDoc, title...)
 
 	// add content
-	md := markdown.ToHTML(file, nil, nil)
+	md := markdown.ToHTML(file, parser, nil)
 	rawDoc = append(rawDoc, md...)
 
 	// parse HTML
