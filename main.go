@@ -113,11 +113,13 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	f = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" {
 			broken := false
+			external := false
 			for _, attr := range n.Attr {
 				if attr.Key == "href" {
 					if strings.HasPrefix(attr.Val, "https://") ||
 						strings.HasPrefix(attr.Val, "//") ||
 						strings.HasPrefix(attr.Val, "http://") {
+						external = true
 						break
 					}
 					_, err := readExt(path.Join(path.Dir(r.URL.Path), attr.Val))
@@ -134,16 +136,28 @@ func handle(w http.ResponseWriter, r *http.Request) {
 				existingClass := false
 				for i := range n.Attr {
 					if n.Attr[i].Key == "class" {
-						n.Attr[i].Val = n.Attr[i].Val + " broken"
+						n.Attr[i].Val = n.Attr[i].Val + " broken-link"
 						existingClass = true
 						break
 					}
 				}
 				if !existingClass {
-					n.Attr = append(n.Attr, html.Attribute{Key: "class", Val: "broken"})
+					n.Attr = append(n.Attr, html.Attribute{Key: "class", Val: "broken-link"})
 				}
 			}
-
+			if external {
+				existingClass := false
+				for i := range n.Attr {
+					if n.Attr[i].Key == "class" {
+						n.Attr[i].Val = n.Attr[i].Val + " external-link"
+						existingClass = true
+						break
+					}
+				}
+				if !existingClass {
+					n.Attr = append(n.Attr, html.Attribute{Key: "class", Val: "external-link"})
+				}
+			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			f(c)
