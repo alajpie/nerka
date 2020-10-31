@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-http-utils/etag"
@@ -16,7 +18,16 @@ import (
 )
 
 func read(name string) ([]byte, error) {
-	return ioutil.ReadFile(path.Join(os.Args[1], name))
+	base, err := filepath.Abs(os.Args[1])
+	if err != nil {
+		return nil, err
+	}
+	file := path.Join(base, name)
+	println(base, file)
+	if !strings.HasPrefix(file, base+"/") {
+		return nil, errors.New("open " + file + ": directory traversal attack")
+	}
+	return ioutil.ReadFile(file)
 }
 
 func readExt(name string) ([]byte, error) {
