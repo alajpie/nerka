@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path"
@@ -73,6 +74,19 @@ func handle(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(303)
 			return
 		}
+	}
+
+	extension := path.Ext(r.URL.Path)
+	if extension != "" && extension != ".md" && extension != ".html" { // static
+		file, err := read(r.URL.Path)
+		if err != nil {
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.Header().Set("Content-Type", mime.TypeByExtension(extension))
+		w.Header().Set("Cache-Control", "max-age=10, stale-while-revalidate=28800")
+		w.Write(file)
+		return
 	}
 
 	// read file or index
