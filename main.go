@@ -7,6 +7,7 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -141,15 +142,18 @@ func handle(w http.ResponseWriter, r *http.Request) {
 			external := false
 			for _, attr := range n.Attr {
 				if attr.Key == "href" {
-					if strings.HasPrefix(attr.Val, "https://") ||
-						strings.HasPrefix(attr.Val, "//") ||
-						strings.HasPrefix(attr.Val, "http://") {
+					link, err := url.Parse(attr.Val)
+					if err != nil {
+						broken = true
+						break
+					}
+					if len(link.Host) > 0 {
 						external = true
 						break
 					}
-					_, err := readExt(path.Join(path.Dir(r.URL.Path), attr.Val))
+					_, err = readExt(path.Join(path.Dir(r.URL.Path), link.Path))
 					notFile := err != nil
-					_, err = readExt(path.Join(path.Dir(r.URL.Path), attr.Val, "index"))
+					_, err = readExt(path.Join(path.Dir(r.URL.Path), link.Path, "index"))
 					notFolder := err != nil
 					if notFile && notFolder {
 						broken = true
