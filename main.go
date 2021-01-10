@@ -25,7 +25,6 @@ func read(name string) ([]byte, error) {
 		return nil, err
 	}
 	file := path.Join(base, name)
-	println(base, file)
 	if !strings.HasPrefix(file, base+"/") {
 		return nil, errors.New("open " + file + ": directory traversal attack")
 	}
