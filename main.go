@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/go-http-utils/etag"
 	"github.com/gomarkdown/markdown"
@@ -46,6 +48,56 @@ func readExt(name string) ([]byte, error) {
 	return read(name)
 }
 
+var mutex sync.Mutex
+var locks map[string][]byte
+var lockExpires map[string]time.Time
+
+func lockOrExtend(page string, lock []byte) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	currentLock, hasLock := locks[page]
+	if hasLock && bytes.Compare(currentLock, lock) != 0 {
+		return errors.New("already locked")
+	}
+
+	// lock
+	expires := time.Now().Add(time.Minute)
+	locks[page] = lock
+	lockExpires[page] = expires
+
+	go func(page string) {
+		for {
+			mutex.Lock()
+			expires = lockExpires[page]
+			// lock expired
+			if expires.Before(time.Now()) {
+				delete(locks, page)
+				delete(lockExpires, page)
+				mutex.Unlock()
+				return
+			}
+			mutex.Unlock()
+			time.Sleep(expires.Sub(time.Now()))
+		}
+	}(page)
+	return nil
+}
+
+func unlock(page string, lock []byte) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	currentLock, hasLock := locks[page]
+	if hasLock && bytes.Compare(currentLock, lock) != 0 {
+		return errors.New("locked by someone else")
+	}
+
+	delete(locks, page)
+	delete(lockExpires, page)
+	return nil
+}
+
 func handle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Vary", "Cookie")
 	// set auth cookie
@@ -67,6 +119,47 @@ func handle(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("no"))
 			return
 		}
+	}
+
+	// handle locks
+	if strings.HasSuffix(r.URL.Path, "/.lock") {
+		if r.Method != "POST" {
+			w.Header().Set("Allow", "POST")
+			w.WriteHeader(405)
+			w.Write([]byte("only POSTing locks is allowed"))
+			return
+		}
+		page := strings.TrimSuffix(r.URL.Path, "/.lock")
+		if _, err := readExt(page); err != nil {
+			w.WriteHeader(404)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(r.Body)
+		lock := buf.Bytes()
+		if len(lock) == 0 {
+			w.WriteHeader(400)
+			w.Write([]byte("lock can't be empty"))
+			return
+		}
+
+		err = lockOrExtend(page, lock)
+		if err != nil {
+			w.WriteHeader(409)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.WriteHeader(200)
+		return
+	}
+
+	if r.Method != "GET" && r.Method != "POST" {
+		w.Header().Set("Allow", "GET, POST")
+		w.WriteHeader(405)
+		w.Write([]byte("only GETting or POSTing pages is allowed"))
+		return
 	}
 
 	// normalize slashes
@@ -236,5 +329,7 @@ func main() {
 	if len(os.Args) != 2 {
 		panic("you need to specify a base directory")
 	}
+	locks = make(map[string][]byte)
+	lockExpires = make(map[string]time.Time)
 	log.Fatal(http.ListenAndServe("127.0.0.1:8002", etag.Handler(http.HandlerFunc(handle), true)))
 }
