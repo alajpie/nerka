@@ -124,6 +124,17 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	}
 	rawDoc = append(rawDoc, title...)
 
+	// add up link
+	if r.URL.Path != "/" {
+		var up string
+		if strings.HasSuffix(r.URL.Path, "/") {
+			up = ".."
+		} else {
+			up = path.Join("..", path.Base(path.Join(r.URL.Path, ".."))) + "/"
+		}
+		rawDoc = append(rawDoc, []byte("<a href=\""+up+"\" class=\"up-arrow\">\u21b0 up</a>")...)
+	}
+
 	// add content
 	extensions := parser.CommonExtensions | parser.Attributes
 	parser := parser.NewWithExtensions(extensions)
