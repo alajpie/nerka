@@ -8,5 +8,6 @@ require (
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a // indirect
 	github.com/gomarkdown/markdown v0.0.0-20201024011455-45c732cc8a6b
 	github.com/stretchr/testify v1.6.1 // indirect
+	github.com/tdewolff/minify/v2 v2.9.11
 	golang.org/x/net v0.0.0-20201029055024-942e2f445f3c
 )

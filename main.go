@@ -11,11 +11,16 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/go-http-utils/etag"
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/parser"
+	"github.com/tdewolff/minify/v2"
+	"github.com/tdewolff/minify/v2/css"
+	mhtml "github.com/tdewolff/minify/v2/html"
+	"github.com/tdewolff/minify/v2/js"
 	"golang.org/x/net/html"
 )
 
@@ -79,6 +84,11 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	m := minify.New()
+	m.AddFunc("text/html", mhtml.Minify)
+	m.AddFunc("text/css", css.Minify)
+	m.AddFuncRegexp(regexp.MustCompile("^(application|text)/(x-)?(java|ecma)script$"), js.Minify)
+
 	extension := path.Ext(r.URL.Path)
 	if extension != "" && extension != ".md" && extension != ".html" { // static
 		file, err := read(r.URL.Path)
@@ -88,7 +98,9 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", mime.TypeByExtension(extension))
 		w.Header().Set("Cache-Control", "max-age=300, stale-while-revalidate=28800")
-		w.Write(file)
+		r := bytes.NewReader(file)
+		m.Minify(mime.TypeByExtension(extension), w, r)
+		w.WriteHeader(200)
 		return
 	}
 
@@ -209,8 +221,11 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	}
 	f(doc)
 
-	// render HTML
-	html.Render(w, doc)
+	// render and minify HTML
+	var unminified bytes.Buffer
+	html.Render(&unminified, doc)
+	m.Minify("text/html", w, &unminified)
+	w.WriteHeader(200)
 }
 
 func main() {
