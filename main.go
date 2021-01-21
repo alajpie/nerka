@@ -62,6 +62,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		cookie, err := r.Cookie("nerka")
 		if err != nil || cookie.Value != strings.TrimSpace(string(auth)) {
+			w.WriteHeader(403)
 			w.Header().Set("Cache-Control", "max-age=604800, immutable")
 			w.Write([]byte("no"))
 			return
