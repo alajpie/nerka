@@ -97,11 +97,14 @@ func handle(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(err.Error()))
 			return
 		}
-		w.Header().Set("Content-Type", mime.TypeByExtension(extension))
 		w.Header().Set("Cache-Control", "max-age=300, stale-while-revalidate=28800")
-		r := bytes.NewReader(file)
-		m.Minify(mime.TypeByExtension(extension), w, r)
-		w.WriteHeader(200)
+		w.Header().Set("Content-Type", mime.TypeByExtension(extension))
+		b, err := m.Bytes(mime.TypeByExtension(extension), file)
+		if err != nil {
+			w.Write(file)
+			return
+		}
+		w.Write(b)
 		return
 	}
 
