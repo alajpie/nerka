@@ -46,6 +46,16 @@ func readExt(name string) ([]byte, error) {
 	return read(name)
 }
 
+func readInfo(name string) (os.FileInfo, error) {
+	for _, ext := range []string{".md", ".html"} {
+		info, err := os.Stat(name + ext)
+		if err == nil {
+			return info, nil
+		}
+	}
+	return os.Stat(name)
+}
+
 func handle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Vary", "Cookie")
 	// set auth cookie
@@ -70,7 +80,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// normalize slashes
-	info, err := os.Stat(path.Join(os.Args[1], r.URL.Path))
+	info, err := readInfo(path.Join(os.Args[1], r.URL.Path))
 	if err == nil {
 		w.Header().Set("Cache-Control", "max-age=604800")
 		if info.IsDir() && !strings.HasSuffix(r.URL.Path, "/") {
